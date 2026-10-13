@@ -1,18 +1,14 @@
-// Khắc phục lỗi crypto is not defined
-const { webcrypto } = require('node:crypto');
+const nodeCrypto = require('node:crypto');
 
-if (!globalThis.crypto) {
-  globalThis.crypto = webcrypto;
-}
+// Cung cấp Web Crypto API cho MongoDB
+globalThis.crypto = nodeCrypto.webcrypto;
 
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
-const app = express();
-app.use(cors());
-app.use(express.json());
 
+console.log('Crypto available:', !!globalThis.crypto);
 // Kết nối MongoDB Atlas
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Đã kết nối MongoDB Atlas'))
