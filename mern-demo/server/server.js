@@ -1,8 +1,14 @@
+// Khắc phục lỗi crypto is not defined
+const { webcrypto } = require('node:crypto');
+
+if (!globalThis.crypto) {
+  globalThis.crypto = webcrypto;
+}
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
-
 const app = express();
 app.use(cors());
 app.use(express.json());
