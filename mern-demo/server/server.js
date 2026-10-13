@@ -1,6 +1,7 @@
+
 const nodeCrypto = require('node:crypto');
 
-// Cung cấp Web Crypto API cho MongoDB
+// Khắc phục lỗi crypto is not defined
 globalThis.crypto = nodeCrypto.webcrypto;
 
 const express = require('express');
@@ -8,51 +9,129 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
-console.log('Crypto available:', !!globalThis.crypto);
-// Kết nối MongoDB Atlas
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Đã kết nối MongoDB Atlas'))
-  .catch((err) => console.log('Lỗi kết nối MongoDB:', err));
+const app = express();
 
-// Tạo Model Student
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Cấu hình PORT
+const PORT = process.env.PORT || 5000;
+
+// Schema Student
 const studentSchema = new mongoose.Schema({
   studentId: String,
   name: String,
   email: String
 });
+
 const Student = mongoose.model('Student', studentSchema);
 
-// API GET /api/hello (Câu 22)
+// API kiểm tra Backend
 app.get('/api/hello', (req, res) => {
-  res.json({ message: 'Backend đang hoạt động' });
+  res.json({
+    message: 'Backend đang hoạt động'
+  });
 });
 
-// API GET /api/students (Lấy danh sách sinh viên)
+// API GET - Lấy danh sách sinh viên
 app.get('/api/students', async (req, res) => {
-  const students = await Student.find();
-  res.json(students);
+  try {
+    const students = await Student.find();
+    res.json(students);
+  } catch (error) {
+    console.error('Lỗi lấy sinh viên:', error);
+    res.status(500).json({
+      message: 'Lỗi lấy danh sách sinh viên'
+    });
+  }
 });
 
-// API POST /api/students (Thêm sinh viên)
+// API POST - Thêm sinh viên
 app.post('/api/students', async (req, res) => {
-  const newStudent = await Student.create(req.body);
-  res.json(newStudent);
+  try {
+    const newStudent = await Student.create(req.body);
+    res.status(201).json(newStudent);
+  } catch (error) {
+    console.error('Lỗi thêm sinh viên:', error);
+    res.status(500).json({
+      message: 'Lỗi thêm sinh viên'
+    });
+  }
 });
 
-// API PUT /api/students/:id (Cập nhật sinh viên)
+// API PUT - Cập nhật sinh viên
 app.put('/api/students/:id', async (req, res) => {
-  const updatedStudent = await Student.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  res.json(updatedStudent);
+  try {
+    const updatedStudent = await Student.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      {
+        new: true,
+        runValidators: true
+      }
+    );
+
+    if (!updatedStudent) {
+      return res.status(404).json({
+        message: 'Không tìm thấy sinh viên'
+      });
+    }
+
+    res.json(updatedStudent);
+  } catch (error) {
+    console.error('Lỗi cập nhật sinh viên:', error);
+    res.status(500).json({
+      message: 'Lỗi cập nhật sinh viên'
+    });
+  }
 });
 
-// API DELETE /api/students/:id (Xóa sinh viên)
+// API DELETE - Xóa sinh viên
 app.delete('/api/students/:id', async (req, res) => {
-  await Student.findByIdAndDelete(req.params.id);
-  res.json({ message: 'Đã xóa sinh viên' });
+  try {
+    const deletedStudent = await Student.findByIdAndDelete(
+      req.params.id
+    );
+
+    if (!deletedStudent) {
+      return res.status(404).json({
+        message: 'Không tìm thấy sinh viên'
+      });
+    }
+
+    res.json({
+      message: 'Đã xóa sinh viên thành công'
+    });
+  } catch (error) {
+    console.error('Lỗi xóa sinh viên:', error);
+    res.status(500).json({
+      message: 'Lỗi xóa sinh viên'
+    });
+  }
 });
 
-// Khởi động server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server Node.js đang chạy trên port ${PORT}`);
-});
+// Kết nối MongoDB Atlas và khởi động server
+async function startServer() {
+  try {
+    if (!process.env.MONGODB_URI) {
+      throw new Error('Thiếu biến môi trường MONGODB_URI');
+    }
+
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000
+    });
+
+    console.log('Đã kết nối MongoDB Atlas');
+
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server Node.js đang chạy trên port ${PORT}`);
+    });
+
+  } catch (error) {
+    console.error('Lỗi kết nối MongoDB:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
